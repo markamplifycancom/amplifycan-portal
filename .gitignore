@@ -1,0 +1,10 @@
+storage/portal.sqlite
+storage/portal.sqlite-journal
+storage/portal.sqlite-wal
+storage/portal.sqlite-shm
+storage/uploads/*
+!storage/uploads/.gitkeep
+.env
+*.log
+.DS_Store
+Thumbs.db
