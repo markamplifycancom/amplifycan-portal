@@ -63,5 +63,9 @@ class App
         $r->post('/admin/customers/{id}/products/new',             'AdminController@addProduct');
         $r->post('/admin/customers/{id}/products/{pid}/save',      'AdminController@saveProduct');
         $r->post('/admin/customers/{id}/rules/save',               'AdminController@saveRules');
+        // Admin: impersonation + admin user management
+        $r->post('/admin/impersonate/stop',                       'AdminController@stopImpersonation');
+        $r->post('/admin/impersonate/{id}',                       'AdminController@impersonate');
+        $r->post('/admin/admins/new',                             'AdminController@addAdminUser');
     }
 }
