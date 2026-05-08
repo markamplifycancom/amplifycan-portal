@@ -134,39 +134,49 @@ class Monday
             return null;
         }
 
-        // 2. Create subitems for each line — two-step because Monday's create_subitem
-        //    drops numbers-column values (a known quirk). We create with just the description,
-        //    then set price + quantity via change_multiple_column_values.
+        // 2. Create subitems for each line.
+        //
+        // Note on the Quantity column: although `quantity_mkn5c6xs` is a regular `numbers`
+        // column type (verified via the Monday API), passing it inside create_subitem's
+        // column_values silently drops to 0 — most likely a board-level default or
+        // automation on Mark's Estimates board overrides it during creation. The fix:
+        // omit Quantity from the create call, then set it explicitly via
+        // change_simple_column_value, which we've confirmed always sticks.
         $subBoardId = self::subitemsBoardId();
-        $createSubMut = 'mutation ($parentId: ID!, $name: String!) {
-            create_subitem(parent_item_id: $parentId, item_name: $name) { id }
-        }';
-        $setColsMut = 'mutation ($itemId: ID!, $boardId: ID!, $cv: JSON!) {
-            change_multiple_column_values(item_id: $itemId, board_id: $boardId, column_values: $cv) { id }
+        $simpleMut = 'mutation ($itemId: ID!, $boardId: ID!, $colId: String!, $value: String!) {
+            change_simple_column_value(item_id: $itemId, board_id: $boardId, column_id: $colId, value: $value, create_labels_if_missing: true) { id }
         }';
         foreach ($lines as $line) {
-            $resp = self::graphql($createSubMut, [
+            $subCols = [
+                self::SUB_DESCRIPTION    => ['text' => $line['description']],
+                self::SUB_CX_SALES_PRICE => (float)$line['amount'],
+                // Quantity intentionally omitted — set below.
+            ];
+            $subMut = 'mutation ($parentId: ID!, $name: String!, $cv: JSON!) {
+                create_subitem(parent_item_id: $parentId, item_name: $name, column_values: $cv, create_labels_if_missing: true) { id board { id } }
+            }';
+            $subResp = self::graphql($subMut, [
                 'parentId' => $itemId,
                 'name'     => substr($line['description'], 0, 100),
+                'cv'       => json_encode($subCols),
             ]);
-            $subId = $resp['data']['create_subitem']['id'] ?? null;
-            if (!$subId) { error_log('Monday create_subitem failed: ' . json_encode($resp)); continue; }
-            // Set each column with its own change_simple_column_value — change_multiple was
-            // silently skipping the Quantity write. One call per column is reliable.
-            $simpleSet = function(string $colId, string $value) use ($subId, $subBoardId) {
-                $mut = 'mutation ($itemId: ID!, $boardId: ID!, $colId: String!, $value: String!) {
-                    change_simple_column_value(item_id: $itemId, board_id: $boardId, column_id: $colId, value: $value) { id }
-                }';
-                self::graphql($mut, [
-                    'itemId'  => $subId,
-                    'boardId' => (string)$subBoardId,
-                    'colId'   => $colId,
-                    'value'   => $value,
-                ]);
-            };
-            $simpleSet(self::SUB_DESCRIPTION,    $line['description']);
-            $simpleSet(self::SUB_CX_SALES_PRICE, (string)$line['amount']);
-            $simpleSet(self::SUB_QUANTITY,       '1');
+            $subId = $subResp['data']['create_subitem']['id'] ?? null;
+            $realSubBoardId = $subResp['data']['create_subitem']['board']['id'] ?? $subBoardId;
+            if (!$subId) {
+                error_log("Monday create_subitem failed for order $orderId line: " . json_encode($subResp));
+                continue;
+            }
+
+            // Set Quantity now that the subitem exists.
+            $qtyResp = self::graphql($simpleMut, [
+                'itemId'  => (string)$subId,
+                'boardId' => (string)$realSubBoardId,
+                'colId'   => self::SUB_QUANTITY,
+                'value'   => '1',
+            ]);
+            if (!empty($qtyResp['errors'])) {
+                error_log("Monday quantity-set failed for subitem $subId: " . json_encode($qtyResp));
+            }
         }
 
         // 3. Add the long-form update note
@@ -233,36 +243,4 @@ class Monday
         self::graphql($mutation, ['itemId' => $itemId, 'body' => $body]);
     }
 
-    public static function mapMondayStatus(?string $text): ?string
-    {
-        if (!$text) return null;
-        $map = [
-            'New Estimate'                     => 'Submitted',
-            'Estimate sent to cx'              => 'Submitted',
-            'Estimate approved'                => 'In Production',
-            'Temporary Approved'               => 'In Production',
-            'Changes needed or awaiting approval' => 'In Production',
-            'Invoiced'                         => 'Invoiced',
-            'OtherComplete - need invoice'     => 'Delivered',
-        ];
-        return $map[trim($text)] ?? null;
-    }
-
-    private static function dryRun(array $order, string $itemName, array $columnValues, array $lines, string $note): string
-    {
-        $logPath = PORTAL_STORAGE . '/monday_dryrun.log';
-        $entry  = "===== " . date('Y-m-d H:i:s') . " =====\n";
-        $entry .= "Target: Estimates board (id " . self::estimatesBoardId() . ")\n";
-        $entry .= "Item name: $itemName\n";
-        $entry .= "Column values:\n";
-        foreach ($columnValues as $col => $val) $entry .= "  $col = " . json_encode($val) . "\n";
-        $entry .= "Subitems (" . count($lines) . "):\n";
-        foreach ($lines as $l) $entry .= "  - {$l['description']} — \$" . number_format((float)$l['amount'], 2) . "\n";
-        $entry .= "\nUpdate note:\n$note\n";
-        @file_put_contents($logPath, $entry, FILE_APPEND);
-        $fakeId = 'dryrun-' . $order['id'] . '-' . substr(md5((string)microtime(true)), 0, 6);
-        Database::pdo()->prepare("UPDATE orders SET monday_item_id = ?, updated_at = datetime('now') WHERE id = ?")
-            ->execute([$fakeId, $order['id']]);
-        return $fakeId;
-    }
-}
+    public static fu
