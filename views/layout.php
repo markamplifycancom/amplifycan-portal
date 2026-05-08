@@ -53,6 +53,23 @@ $initials = $user ? strtoupper(substr($user['first_name'] ?? 'U', 0, 1) . substr
 </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+<?php $_admin = \Portal\Auth::adminUser(); $_imperson = \Portal\Auth::isImpersonating(); ?>
+<?php if ($_imperson): ?>
+<div class="bg-brand-navy text-white text-sm py-2 px-4">
+  <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <span class="text-xs uppercase tracking-wider opacity-75">Acting as</span>
+      <span class="font-semibold"><?= e($customer['name'] ?? '?') ?></span>
+      <span class="text-xs opacity-60">(signed in as <?= e($_admin['first_name'] . ' ' . $_admin['last_name']) ?>, admin)</span>
+    </div>
+    <form method="post" action="/admin/impersonate/stop" class="inline">
+      <input type="hidden" name="csrf" value="<?= e(\Portal\Auth::csrfToken()) ?>">
+      <button class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded border border-white/20">← Stop acting as customer</button>
+    </form>
+  </div>
+</div>
+<?php endif; ?>
+
 
 <header class="bg-white border-b border-gray-200">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">

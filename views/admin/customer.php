@@ -13,6 +13,11 @@
   <p class="text-sm text-gray-500 mt-1">Customer #<?= (int)$subject['id'] ?></p>
 </div>
 
+<form method="post" action="/admin/impersonate/<?= (int)$subject['id'] ?>" class="mb-4">
+  <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+  <button class="bg-brand text-white text-sm font-medium px-4 py-2 rounded-md hover-bg-brand-dark">→ Act as <?= e($subject['name']) ?> (place an order on their behalf)</button>
+</form>
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
   <!-- Customer fields -->

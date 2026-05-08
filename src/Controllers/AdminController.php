@@ -243,4 +243,45 @@ class AdminController
         }
         View::redirect("/admin/customers/$cid");
     }
+
+    public function impersonate(array $args): void
+    {
+        $this->requireAdmin();
+        if (!\Portal\Auth::checkCsrf($_POST['csrf'] ?? null)) { \Portal\View::redirect('/admin'); return; }
+        $cid = (int)$args['id'];
+        if (\Portal\Auth::startImpersonation($cid)) {
+            \Portal\View::redirect('/dashboard');
+        } else {
+            \Portal\View::redirect('/admin');
+        }
+    }
+
+    public function stopImpersonation(): void
+    {
+        if (!\Portal\Auth::checkCsrf($_POST['csrf'] ?? null)) { \Portal\View::redirect('/dashboard'); return; }
+        \Portal\Auth::stopImpersonation();
+        \Portal\View::redirect('/admin');
+    }
+
+    public function addAdminUser(): void
+    {
+        $this->requireAdmin();
+        if (!\Portal\Auth::checkCsrf($_POST['csrf'] ?? null)) { \Portal\View::redirect('/admin'); return; }
+        $email = trim($_POST['email'] ?? '');
+        $pw    = $_POST['password'] ?? '';
+        $first = trim($_POST['first_name'] ?? '');
+        $last  = trim($_POST['last_name']  ?? '');
+        if ($email === '' || $pw === '') { \Portal\View::redirect('/admin'); return; }
+        try {
+            \Portal\Database::insert('users', [
+                'customer_id' => null,
+                'email' => $email,
+                'password_hash' => password_hash($pw, PASSWORD_DEFAULT),
+                'first_name' => $first,
+                'last_name' => $last,
+                'is_admin' => 1,
+            ]);
+        } catch (\Throwable $e) { /* dup email; ignore */ }
+        \Portal\View::redirect('/admin');
+    }
 }
