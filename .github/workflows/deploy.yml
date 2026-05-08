@@ -1,0 +1,36 @@
+name: Deploy to Droplet
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: portal-deploy
+      cancel-in-progress: false
+    steps:
+      - name: SSH into droplet, pull latest, reload
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USER }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          port: 22
+          script: |
+            set -euo pipefail
+            cd /opt/portal
+            echo "→ Pulling latest from GitHub"
+            git fetch --depth=1 origin main
+            git reset --hard origin/main
+            echo "→ Ensuring storage permissions"
+            chown -R www-data:www-data /opt/portal/storage 2>/dev/null || true
+            mkdir -p /opt/portal/storage/uploads /opt/portal/storage/sessions
+            chmod -R u+rwX /opt/portal/storage
+            echo "→ Reloading services"
+            systemctl reload nginx || true
+            PHPV=$(ls /etc/php/ | sort -V | tail -1)
+            systemctl reload "php${PHPV}-fpm" || true
+            echo "→ Deploy done at $(date -u)"
