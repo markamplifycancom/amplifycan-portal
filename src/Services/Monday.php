@@ -139,7 +139,7 @@ class Monday
             $subCols = [
                 self::SUB_DESCRIPTION    => ['text' => $line['description']],
                 self::SUB_CX_SALES_PRICE => (float)$line['amount'],
-                self::SUB_QUANTITY       => 1,
+                self::SUB_QUANTITY       => '1',
             ];
             $subMut = 'mutation ($parentId: ID!, $name: String!, $cv: JSON!) {
                 create_subitem(parent_item_id: $parentId, item_name: $name, column_values: $cv) { id }
