@@ -30,14 +30,45 @@ class Pricing
     }
 
     /**
+     * Parse a size label (e.g. "24×36", "8.5×11", "8.5×14 (legal)") into [width, height] in inches.
+     */
+    private static function parseSize(string $size): ?array
+    {
+        if (preg_match('/(\d+(?:\.\d+)?)\s*[×x]\s*(\d+(?:\.\d+)?)/u', $size, $m)) {
+            return [(float)$m[1], (float)$m[2]];
+        }
+        return null;
+    }
+
+    /** Square-foot area for a size string. Falls back to letter (~0.65 sqft) if unparseable. */
+    private static function sqftFor(string $size): float
+    {
+        $dims = self::parseSize($size);
+        if (!$dims) return 0.65;
+        return ($dims[0] * $dims[1]) / 144.0;
+    }
+
+    /**
      * Map a single range (size + color + stock) to a per-page rate.
-     * Sizes:  "8.5×11", "11×17", or any size starting with those numbers (handles 8.5×14 as letter for now).
-     * Color:  'bw' or 'color'.
-     * Stock:  'bond', 'cardstock', or 'gloss'.
+     *
+     * Letter-ish (8.5×11, legal) and tabloid (11×17, 12×18) use saved per-customer rates.
+     * Anything bigger (17×22, 18×24, 22×34, 24×36, 30×42, 34×44, 36×48) is large-format
+     * blueprint repro, priced as the tabloid rate scaled by sqft ratio (tabloid baseline = 1.30 sqft).
+     * Stock surcharges only apply to letter-ish.
      */
     public static function rateForRange(int $customerId, string $size, string $color, string $stock): float
     {
-        $isTabloid = str_contains($size, '11×17') || str_contains($size, '12×18');
+        $sqft = self::sqftFor($size);
+        $isLetter   = $sqft <= 1.0;                                      // 8.5×11, legal
+        $isTabloid  = !$isLetter && $sqft <= 1.7;                        // 11×17, 12×18
+        $isLargeFmt = !$isLetter && !$isTabloid;                         // anything 17×22+
+
+        if ($isLargeFmt) {
+            $tabloidKey = $color === 'color' ? 'color-tabloid' : 'bw-tabloid';
+            $base = self::ruleFor($customerId, $tabloidKey);
+            return round($base * ($sqft / 1.30), 4);
+        }
+
         $key = $isTabloid
             ? ($color === 'color' ? 'color-tabloid'    : 'bw-tabloid')
             : ($color === 'color' ? 'color-letter-bond' : 'bw-letter-bond');
@@ -73,35 +104,4 @@ class Pricing
                 $stockLabel = ($r['stock'] ?? 'bond') === 'bond' ? '' : ' ' . $r['stock'];
                 $sizeLabel = $r['size'] ?? '8.5×11';
                 $setsLabel = $sets > 1 ? " ({$pages}pp × {$sets} sets)" : '';
-                $lines[] = [
-                    'description' => "{$count} pp {$colorLabel} {$sizeLabel}{$stockLabel}{$setsLabel}",
-                    'amount'      => $amount,
-                ];
-            }
-            // Finishing per file
-            $finishing = $file['finishing'] ?? 'none';
-            if ($finishing && $finishing !== 'none') {
-                $perSet = match ($finishing) {
-                    'staple' => 0.50,
-                    'punch'  => 0.75,
-                    'bind'   => 4.50,
-                    default  => 0.0,
-                };
-                if ($perSet > 0) {
-                    $lines[] = [
-                        'description' => "Finishing: $finishing × {$sets}",
-                        'amount'      => round($perSet * $sets, 2),
-                    ];
-                }
-            }
-        }
-
-        $subBeforeDiscount = array_sum(array_column($lines, 'amount'));
-        $discount = $totalPages > 500 ? round($subBeforeDiscount * 0.05, 2) : 0.0;
-        $subtotal = round($subBeforeDiscount - $discount, 2);
-        $tax = round($subtotal * PORTAL_TAX_RATE, 2);
-        $total = round($subtotal + $tax, 2);
-
-        return compact('lines', 'subtotal', 'discount', 'tax', 'total', 'totalPages');
-    }
-}
+  

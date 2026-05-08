@@ -16,8 +16,17 @@ $hasFiles = !empty($draft['files']);
     <div class="text-xs text-gray-500 mt-2">Detecting page count, sizes, and color. This can take 10–30 seconds for large files. Please don't refresh.</div>
   </div>
 </div>
+<!-- Order-submit overlay -->
+<div id="submitOverlay" class="hidden fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center" style="backdrop-filter: blur(2px);">
+  <div class="bg-white rounded-lg shadow-2xl p-8 text-center max-w-sm">
+    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200" style="border-top-color: #f1551a;"></div>
+    <div class="font-medium text-gray-900 mt-4">Submitting your order…</div>
+    <div class="text-xs text-gray-500 mt-2">Saving files and pushing to production. Usually 5–15 seconds. Please don't close or refresh this tab.</div>
+  </div>
+</div>
 <script>
 function showUploadOverlay() { document.getElementById('uploadOverlay').classList.remove('hidden'); }
+function showSubmitOverlay() { document.getElementById('submitOverlay').classList.remove('hidden'); }
 </script>
 <div class="mb-6 flex items-baseline justify-between">
   <div>
@@ -89,7 +98,7 @@ function showUploadOverlay() { document.getElementById('uploadOverlay').classLis
                 <div class="grid grid-cols-12 gap-2 items-center text-sm">
                   <input type="text" name="ranges[<?= $rIdx ?>][pages]" value="<?= e($r['pages']) ?>" placeholder="e.g., 1-5" class="col-span-3 border border-gray-200 rounded px-2 py-1 text-sm">
                   <select name="ranges[<?= $rIdx ?>][size]" class="col-span-3 border border-gray-200 rounded px-2 py-1 text-sm">
-                    <?php foreach (['8.5×11','8.5×14 (legal)','11×17','12×18'] as $sz): ?>
+                    <?php foreach (['8.5×11','8.5×14 (legal)','11×17','12×18','17×22','18×24','22×34','24×36','30×42','34×44','36×48'] as $sz): ?>
                       <option value="<?= e($sz) ?>" <?= str_starts_with($r['size'], explode(' ', $sz)[0]) ? 'selected' : '' ?>><?= e($sz) ?></option>
                     <?php endforeach; ?>
                   </select>
@@ -224,20 +233,4 @@ function showUploadOverlay() { document.getElementById('uploadOverlay').classLis
           </div>
           <div class="flex justify-between text-gray-500 text-xs">
             <span>Tax (5.5%)</span>
-            <span class="tabular-nums">$<?= number_format((float)$quote['tax'], 2) ?></span>
-          </div>
-          <div class="flex justify-between text-base font-semibold text-gray-900 pt-3 mt-2 border-t border-gray-200">
-            <span>Total</span>
-            <span class="tabular-nums">$<?= number_format((float)$quote['total'], 2) ?></span>
-          </div>
-        </div>
-
-        <form method="post" action="/repro/place" class="mt-5">
-          <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-          <button class="w-full bg-brand text-white font-medium py-2.5 rounded-md hover-bg-brand-dark" <?= empty($quote['lines']) ? 'disabled' : '' ?>>Approve &amp; place order</button>
-        </form>
-        <p class="text-xs text-gray-400 mt-3">No commitment yet. Click approve when the breakdown is right.</p>
-      </div>
-    </div>
-  </div>
-<?php endif; ?>
+            <span class="tabular-nums">$<?= number_format((float)$quote['tax'], 2) ?></spa

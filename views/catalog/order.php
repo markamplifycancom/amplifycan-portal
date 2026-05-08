@@ -5,7 +5,17 @@
     <div class="text-xs text-gray-500 mt-2">Running preflight against the product spec. Just a moment — please don't refresh.</div>
   </div>
 </div>
-<script>function showUploadOverlay() { document.getElementById('uploadOverlay').classList.remove('hidden'); }</script>
+<div id="submitOverlay" class="hidden fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center" style="backdrop-filter: blur(2px);">
+  <div class="bg-white rounded-lg shadow-2xl p-8 text-center max-w-sm">
+    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200" style="border-top-color: #f1551a;"></div>
+    <div class="font-medium text-gray-900 mt-4">Submitting your order…</div>
+    <div class="text-xs text-gray-500 mt-2">Saving files and pushing to production. Usually 5–15 seconds. Please don't close or refresh this tab.</div>
+  </div>
+</div>
+<script>
+function showUploadOverlay() { document.getElementById('uploadOverlay').classList.remove('hidden'); }
+function showSubmitOverlay() { document.getElementById('submitOverlay').classList.remove('hidden'); }
+</script>
 <?php
 /** @var array $user */
 /** @var array $customer */
@@ -64,7 +74,7 @@ $savedArt = !empty($draft['file']['id']) && $draft['file']['id'] === 'saved';
       foreach ($preflight as $r) if ($r['status']==='fail') { $hasFail = true; break; }
     ?>
     <?php if (!$hasFail): ?>
-      <form method="post" action="/catalog/<?= (int)$product['id'] ?>/place" class="bg-blue-50 rounded-lg border border-blue-200 p-4 flex items-center justify-between">
+      <form method="post" action="/catalog/<?= (int)$product['id'] ?>/place" class="bg-blue-50 rounded-lg border border-blue-200 p-4 flex items-center justify-between" onsubmit="showSubmitOverlay()">
         <div class="text-sm text-blue-900">All files passed (or warnings only). Confirm to place this order.</div>
         <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
         <input type="hidden" name="confirm" value="1">
@@ -230,17 +240,4 @@ $savedArt = !empty($draft['file']['id']) && $draft['file']['id'] === 'saved';
         <div class="flex justify-between text-base font-semibold text-gray-900 pt-3 mt-2 border-t border-gray-200">
           <span>Total</span><span class="tabular-nums">$<?= number_format((float)$quote['total'], 2) ?></span>
         </div>
-      </div>
-
-      <form method="post" action="/catalog/<?= (int)$product['id'] ?>/place" class="mt-5">
-        <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-        <button class="w-full bg-brand text-white font-medium py-2.5 rounded-md hover-bg-brand-dark" <?= empty($quote['lines']) ? 'disabled' : '' ?>>Run preflight &amp; continue →</button>
-      </form>
-      <p class="text-xs text-gray-400 mt-3">No commitment yet. You'll review preflight before placing.</p>
-
-      <?php if (!empty($product['fulfillment']) && $product['fulfillment'] === '4over'): ?>
-        <div class="mt-4 text-xs text-gray-400 border-t border-gray-100 pt-3">Produced through 4over.</div>
-      <?php endif; ?>
-    </div>
-  </div>
-</div>
+ 

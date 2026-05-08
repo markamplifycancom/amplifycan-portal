@@ -1,4 +1,13 @@
 <?php /** @var array $order */ /** @var array $lines */ /** @var array $files */ /** @var string $csrf */ ?>
+<!-- Order-submit overlay -->
+<div id="submitOverlay" class="hidden fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center" style="backdrop-filter: blur(2px);">
+  <div class="bg-white rounded-lg shadow-2xl p-8 text-center max-w-sm">
+    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200" style="border-top-color: #f1551a;"></div>
+    <div class="font-medium text-gray-900 mt-4">Placing your reprint…</div>
+    <div class="text-xs text-gray-500 mt-2">Copying files and pushing to production. Please don't close or refresh this tab.</div>
+  </div>
+</div>
+<script>function showSubmitOverlay() { document.getElementById('submitOverlay').classList.remove('hidden'); }</script>
 <a href="/reprint" class="text-sm text-gray-500 hover:text-gray-700">← Back to past orders</a>
 <div class="mt-2 mb-6">
   <h1 class="text-2xl font-semibold text-gray-900">Reprint: <?= e($order['name']) ?></h1>
@@ -24,21 +33,8 @@
   </div>
 
   <div class="lg:col-span-1">
-    <form method="post" action="/reprint/<?= (int)$order['id'] ?>/place" class="bg-white rounded-lg border border-gray-200 p-5 sticky top-4">
+    <form method="post" action="/reprint/<?= (int)$order['id'] ?>/place" class="bg-white rounded-lg border border-gray-200 p-5 sticky top-4" onsubmit="showSubmitOverlay()">
       <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
       <h2 class="text-sm font-semibold text-gray-900 mb-3">Reprint quantity</h2>
       <label class="block text-xs text-gray-500 mb-1">Multiplier (1× = exact same as before)</label>
-      <select name="multiplier" class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-4">
-        <option value="0.5">Half (0.5×)</option>
-        <option value="1" selected>Same as before (1×)</option>
-        <option value="2">Double (2×)</option>
-        <option value="3">Triple (3×)</option>
-      </select>
-      <div class="flex justify-between text-base font-semibold text-gray-900 pt-3 mt-2 border-t border-gray-200">
-        <span>Original total</span><span>$<?= number_format((float)$order['total'], 2) ?></span>
-      </div>
-      <button class="w-full bg-brand text-white font-medium py-2.5 rounded-md mt-4 hover-bg-brand-dark">Place reprint →</button>
-      <p class="text-xs text-gray-400 mt-3">Quote scales linearly. We'll confirm specs match before printing.</p>
-    </form>
-  </div>
-</div>
+      <select name="multiplier" class="w-full border border-gray-300 roun
