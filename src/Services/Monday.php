@@ -151,16 +151,22 @@ class Monday
             ]);
             $subId = $resp['data']['create_subitem']['id'] ?? null;
             if (!$subId) { error_log('Monday create_subitem failed: ' . json_encode($resp)); continue; }
-            $cols = [
-                self::SUB_DESCRIPTION    => ['text' => $line['description']],
-                self::SUB_CX_SALES_PRICE => (string)$line['amount'],
-                self::SUB_QUANTITY       => '1',
-            ];
-            self::graphql($setColsMut, [
-                'itemId'  => $subId,
-                'boardId' => (string)$subBoardId,
-                'cv'      => json_encode($cols),
-            ]);
+            // Set each column with its own change_simple_column_value — change_multiple was
+            // silently skipping the Quantity write. One call per column is reliable.
+            $simpleSet = function(string $colId, string $value) use ($subId, $subBoardId) {
+                $mut = 'mutation ($itemId: ID!, $boardId: ID!, $colId: String!, $value: String!) {
+                    change_simple_column_value(item_id: $itemId, board_id: $boardId, column_id: $colId, value: $value) { id }
+                }';
+                self::graphql($mut, [
+                    'itemId'  => $subId,
+                    'boardId' => (string)$subBoardId,
+                    'colId'   => $colId,
+                    'value'   => $value,
+                ]);
+            };
+            $simpleSet(self::SUB_DESCRIPTION,    $line['description']);
+            $simpleSet(self::SUB_CX_SALES_PRICE, (string)$line['amount']);
+            $simpleSet(self::SUB_QUANTITY,       '1');
         }
 
         // 3. Add the long-form update note
