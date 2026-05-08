@@ -16,6 +16,9 @@ APP_USER="${APP_USER:-www-data}"
 LE_EMAIL="${LE_EMAIL:-mark@amplifycan.com}"
 
 echo "==> Installing system packages"
+# Ensure root can run git commands in /opt/portal even after chowns
+git config --global --add safe.directory "$PORTAL_DIR" 2>/dev/null || true
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq \
@@ -42,7 +45,9 @@ EOF
 systemctl restart "php${PHP_VER}-fpm"
 
 echo "==> Setting permissions on $PORTAL_DIR"
-chown -R "$APP_USER:$APP_USER" "$PORTAL_DIR"
+# Storage and uploads need to be writable by www-data; the rest of $PORTAL_DIR stays root-owned
+# so deploy automation (running as root) can still git pull cleanly.
+chown -R "$APP_USER:$APP_USER" "$PORTAL_DIR/storage"
 mkdir -p "$PORTAL_DIR/storage/uploads" "$PORTAL_DIR/storage/sessions"
 chmod -R u+rwX "$PORTAL_DIR/storage"
 
