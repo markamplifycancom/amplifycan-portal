@@ -1,3 +1,11 @@
+<div id="uploadOverlay" class="hidden fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center" style="backdrop-filter: blur(2px);">
+  <div class="bg-white rounded-lg shadow-2xl p-8 text-center max-w-sm">
+    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200" style="border-top-color: #f1551a;"></div>
+    <div class="font-medium text-gray-900 mt-4">Uploading & checking your file…</div>
+    <div class="text-xs text-gray-500 mt-2">Running preflight against the product spec. Just a moment — please don't refresh.</div>
+  </div>
+</div>
+<script>function showUploadOverlay() { document.getElementById('uploadOverlay').classList.remove('hidden'); }</script>
 <?php
 /** @var array $user */
 /** @var array $customer */
@@ -120,7 +128,7 @@ $savedArt = !empty($draft['file']['id']) && $draft['file']['id'] === 'saved';
       <!-- Hidden file-upload forms per line -->
       <?php foreach ($draft['lines'] as $idx => $line): ?>
         <?php if (empty($line['file'])): ?>
-          <form id="upload-form-<?= $idx ?>" method="post" action="/catalog/<?= (int)$product['id'] ?>/upload" enctype="multipart/form-data" class="hidden">
+          <form id="upload-form-<?= $idx ?>" method="post" action="/catalog/<?= (int)$product['id'] ?>/upload" enctype="multipart/form-data" class="hidden" onsubmit="showUploadOverlay()">
             <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
             <input type="hidden" name="lineIdx" value="<?= $idx ?>">
             <input type="file" id="upload-line-<?= $idx ?>" name="pdf" accept=".pdf,application/pdf" onchange="document.getElementById('upload-form-<?= $idx ?>').submit();">
@@ -163,7 +171,7 @@ $savedArt = !empty($draft['file']['id']) && $draft['file']['id'] === 'saved';
         <?php endif; ?>
       </form>
 
-      <form id="upload-single" method="post" action="/catalog/<?= (int)$product['id'] ?>/upload" enctype="multipart/form-data" class="hidden">
+      <form id="upload-single" method="post" action="/catalog/<?= (int)$product['id'] ?>/upload" enctype="multipart/form-data" class="hidden" onsubmit="showUploadOverlay()">
         <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
         <input type="file" id="reupload" name="pdf" accept=".pdf,application/pdf" onchange="document.getElementById('upload-single').submit();">
       </form>

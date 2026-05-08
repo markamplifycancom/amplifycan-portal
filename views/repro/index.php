@@ -8,6 +8,17 @@
 /** @var string $csrf */
 $hasFiles = !empty($draft['files']);
 ?>
+<!-- Upload-in-progress overlay -->
+<div id="uploadOverlay" class="hidden fixed inset-0 bg-gray-900/60 z-50 flex items-center justify-center" style="backdrop-filter: blur(2px);">
+  <div class="bg-white rounded-lg shadow-2xl p-8 text-center max-w-sm">
+    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200" style="border-top-color: #f1551a;"></div>
+    <div class="font-medium text-gray-900 mt-4">Uploading & analyzing PDF…</div>
+    <div class="text-xs text-gray-500 mt-2">Detecting page count, sizes, and color. This can take 10–30 seconds for large files. Please don't refresh.</div>
+  </div>
+</div>
+<script>
+function showUploadOverlay() { document.getElementById('uploadOverlay').classList.remove('hidden'); }
+</script>
 <div class="mb-6 flex items-baseline justify-between">
   <div>
     <h1 class="text-2xl font-semibold text-gray-900">Repro orders</h1>
@@ -23,7 +34,7 @@ $hasFiles = !empty($draft['files']);
 
 <?php if (!$hasFiles): ?>
   <!-- Upload zone -->
-  <form method="post" action="/repro/upload" enctype="multipart/form-data" id="reprintUpload">
+  <form method="post" action="/repro/upload" enctype="multipart/form-data" id="reprintUpload" onsubmit="showUploadOverlay()">
     <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
     <label class="block bg-white rounded-lg border-2 border-dashed border-gray-300 hover-border-brand p-12 text-center cursor-pointer transition" id="dropzone">
       <input type="file" name="pdfs[]" accept=".pdf,application/pdf" multiple class="hidden" id="pdfInput" onchange="document.getElementById('reprintUpload').submit();">
@@ -137,7 +148,7 @@ $hasFiles = !empty($draft['files']);
       <?php endforeach; ?>
 
       <!-- Add another file -->
-      <form method="post" action="/repro/upload" enctype="multipart/form-data" id="addMore">
+      <form method="post" action="/repro/upload" enctype="multipart/form-data" id="addMore" onsubmit="showUploadOverlay()">
         <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
         <label class="block w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-sm text-center text-gray-500 hover-border-brand cursor-pointer">
           <input type="file" name="pdfs[]" accept=".pdf,application/pdf" multiple class="hidden" onchange="document.getElementById('addMore').submit();">
