@@ -134,20 +134,32 @@ class Monday
             return null;
         }
 
-        // 2. Create subitems for each line
+        // 2. Create subitems for each line — two-step because Monday's create_subitem
+        //    drops numbers-column values (a known quirk). We create with just the description,
+        //    then set price + quantity via change_multiple_column_values.
+        $subBoardId = self::subitemsBoardId();
+        $createSubMut = 'mutation ($parentId: ID!, $name: String!) {
+            create_subitem(parent_item_id: $parentId, item_name: $name) { id }
+        }';
+        $setColsMut = 'mutation ($itemId: ID!, $boardId: ID!, $cv: JSON!) {
+            change_multiple_column_values(item_id: $itemId, board_id: $boardId, column_values: $cv) { id }
+        }';
         foreach ($lines as $line) {
-            $subCols = [
-                self::SUB_DESCRIPTION    => ['text' => $line['description']],
-                self::SUB_CX_SALES_PRICE => (float)$line['amount'],
-                self::SUB_QUANTITY       => '1',
-            ];
-            $subMut = 'mutation ($parentId: ID!, $name: String!, $cv: JSON!) {
-                create_subitem(parent_item_id: $parentId, item_name: $name, column_values: $cv) { id }
-            }';
-            self::graphql($subMut, [
+            $resp = self::graphql($createSubMut, [
                 'parentId' => $itemId,
                 'name'     => substr($line['description'], 0, 100),
-                'cv'       => json_encode($subCols),
+            ]);
+            $subId = $resp['data']['create_subitem']['id'] ?? null;
+            if (!$subId) { error_log('Monday create_subitem failed: ' . json_encode($resp)); continue; }
+            $cols = [
+                self::SUB_DESCRIPTION    => ['text' => $line['description']],
+                self::SUB_CX_SALES_PRICE => (string)$line['amount'],
+                self::SUB_QUANTITY       => '1',
+            ];
+            self::graphql($setColsMut, [
+                'itemId'  => $subId,
+                'boardId' => (string)$subBoardId,
+                'cv'      => json_encode($cols),
             ]);
         }
 
