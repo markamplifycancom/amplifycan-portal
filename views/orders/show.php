@@ -21,6 +21,14 @@ $steps = [
       · <span class="pill <?= $order['type'] === 'Repro' ? 'pill-purple' : ($order['type'] === 'Reprint' ? 'pill-blue' : 'pill-gray') ?>"><?= e($order['type']) ?></span>
       · placed <?= e(date('M j, Y', strtotime($order['created_at']))) ?>
       <?php if ($order['project']): ?>· project <?= e($order['project']) ?><?php endif; ?>
+      <?php if (!empty($order['placed_by_admin_id'])):
+          $admin = \Portal\Database::one("SELECT first_name, last_name, email FROM users WHERE id = ?", [$order['placed_by_admin_id']]);
+          $admin_name = $admin ? trim(($admin['first_name'] ?? '') . ' ' . ($admin['last_name'] ?? '')) : 'an admin';
+      ?>
+        <div class="text-xs mt-1 inline-flex items-center gap-1 px-2 py-1 rounded bg-orange-50 text-orange-800">
+          📋 Placed by <?= e($admin_name ?: ($admin['email'] ?? 'admin')) ?> on this customer's behalf
+        </div>
+      <?php endif; ?>
     </div>
   </div>
   <span class="pill <?= pill_class($order['status']) ?>"><?= e($order['status']) ?></span>

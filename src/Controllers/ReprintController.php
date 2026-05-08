@@ -73,6 +73,7 @@ class ReprintController
         $newOrderId = Database::insert('orders', [
             'customer_id' => $customer['id'],
             'user_id'     => Auth::user()['id'],
+            'placed_by_admin_id' => Auth::isImpersonating() ? Auth::adminUser()['id'] : null,
             'type'        => 'Reprint',
             'name'        => $newName,
             'project'     => $original['project'],

@@ -235,6 +235,7 @@ class CatalogController
         $orderId = Database::insert('orders', [
             'customer_id' => $customer['id'],
             'user_id'     => Auth::user()['id'],
+            'placed_by_admin_id' => Auth::isImpersonating() ? Auth::adminUser()['id'] : null,
             'type'        => 'Catalog',
             'name'        => $product['name'] . (!empty($product['multi_line']) && count($draft['lines']) > 0
                               ? ' — ' . implode(', ', array_filter(array_map(fn($l) => $l['name'] ?: null, $draft['lines'])))

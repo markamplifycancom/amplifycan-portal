@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS orders (
   bill_to_id INTEGER REFERENCES addresses(id),
   notes TEXT,
   monday_item_id TEXT,
+  placed_by_admin_id INTEGER REFERENCES users(id),  -- set when an admin placed this on behalf of the customer
   tracking TEXT,
   last_notified_status TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
