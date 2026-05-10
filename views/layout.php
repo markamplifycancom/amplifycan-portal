@@ -108,5 +108,5 @@ $initials = $user ? strtoupper(substr($user['first_name'] ?? 'U', 0, 1) . substr
   Amplify Graphics &amp; Branding &middot; Customer Portal
 </footer>
 
-</body>
-</html>
+<?php
+// Admin-o

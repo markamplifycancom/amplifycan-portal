@@ -102,9 +102,14 @@ CREATE TABLE IF NOT EXISTS order_files (
   uploaded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
-CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_addresses_customer ON addresses(customer_id);
-CREATE INDEX IF NOT EXISTS idx_products_customer ON products(customer_id);
-CREATE INDEX IF NOT EXISTS idx_pricing_rules_customer ON pricing_rules(customer_id);
+-- Inline feedback from admins, picked up by Claude in chat sessions to drive code changes.
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_user_id   INTEGER REFERENCES users(id),
+  customer_id     INTEGER REFERENCES customers(id),
+  page_url        TEXT,
+  context_json    TEXT,
+  message         TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'open',  -- open | resolved
+  claude_note     TEXT,
+  c

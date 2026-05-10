@@ -31,7 +31,6 @@ class App
         $r->get('/orders',           'OrderController@index');
         $r->get('/orders/{id}',      'OrderController@show');
 
-        // Repro flow (AEC blueprint orders — upload PDF, auto-analyze)
         $r->get('/repro',            'ReproController@start');
         $r->post('/repro/upload',    'ReproController@upload');
         $r->post('/repro/update',    'ReproController@updateFile');
@@ -39,12 +38,10 @@ class App
         $r->post('/repro/clear',     'ReproController@clearDraft');
         $r->post('/repro/place',     'ReproController@place');
 
-        // Reprint flow (re-order an old order)
         $r->get('/reprint',                'ReprintController@index');
         $r->get('/reprint/{id}',           'ReprintController@show');
         $r->post('/reprint/{id}/place',    'ReprintController@place');
 
-        // Catalog flow
         $r->get('/catalog',                 'CatalogController@index');
         $r->get('/catalog/{id}',            'CatalogController@show');
         $r->post('/catalog/{id}/upload',    'CatalogController@upload');
@@ -52,7 +49,6 @@ class App
         $r->post('/catalog/{id}/place',     'CatalogController@place');
         $r->post('/catalog/{id}/clear',     'CatalogController@clearDraft');
 
-        // Admin
         $r->get('/admin',                                          'AdminController@index');
         $r->get('/admin/customers/new',                            'AdminController@newCustomerForm');
         $r->post('/admin/customers/new',                           'AdminController@createCustomer');
@@ -63,9 +59,12 @@ class App
         $r->post('/admin/customers/{id}/products/new',             'AdminController@addProduct');
         $r->post('/admin/customers/{id}/products/{pid}/save',      'AdminController@saveProduct');
         $r->post('/admin/customers/{id}/rules/save',               'AdminController@saveRules');
-        // Admin: impersonation + admin user management
-        $r->post('/admin/impersonate/stop',                       'AdminController@stopImpersonation');
-        $r->post('/admin/impersonate/{id}',                       'AdminController@impersonate');
-        $r->post('/admin/admins/new',                             'AdminController@addAdminUser');
+        $r->post('/admin/impersonate/stop',                        'AdminController@stopImpersonation');
+        $r->post('/admin/impersonate/{id}',                        'AdminController@impersonate');
+        $r->post('/admin/admins/new',                              'AdminController@addAdminUser');
+        $r->post('/admin/feedback/new',                            'AdminController@saveFeedback');
+        $r->get('/admin/feedback',                                 'AdminController@feedbackIndex');
+        $r->post('/admin/feedback/{id}/resolve',                   'AdminController@resolveFeedback');
+        $r->get('/admin/feedback.json',                            'AdminController@feedbackJson');
     }
 }

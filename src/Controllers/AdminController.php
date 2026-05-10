@@ -284,4 +284,119 @@ class AdminController
         } catch (\Throwable $e) { /* dup email; ignore */ }
         \Portal\View::redirect('/admin');
     }
+
+    // ===== Feedback widget endpoints =====
+
+    public function saveFeedback(): void
+    {
+        header('Content-Type: application/json');
+        $admin = \Portal\Auth::adminUser();
+        if (!$admin || empty($admin['is_admin'])) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'admin only']);
+            return;
+        }
+        if (!\Portal\Auth::checkCsrf($_POST['csrf'] ?? null)) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'bad csrf']);
+            return;
+        }
+        $message = trim((string)($_POST['message'] ?? ''));
+        if ($message === '') {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'error' => 'message required']);
+            return;
+        }
+        $orderId  = (int)($_POST['order_id'] ?? 0);
+        $pageUrl  = (string)($_POST['page_url'] ?? '');
+        $customer = \Portal\Auth::customer();
+
+        $context = [
+            'page_url'      => $pageUrl,
+            'impersonating' => \Portal\Auth::isImpersonating(),
+            'admin'         => [
+                'id'    => (int)$admin['id'],
+                'email' => $admin['email'],
+                'name'  => trim(($admin['first_name'] ?? '') . ' ' . ($admin['last_name'] ?? '')),
+            ],
+            'customer'      => $customer ? ['id' => (int)$customer['id'], 'name' => $customer['name']] : null,
+        ];
+        if ($orderId > 0) {
+            $order = \Portal\Database::one("SELECT * FROM orders WHERE id = ?", [$orderId]);
+            if ($order) {
+                $lines = \Portal\Database::all("SELECT description, amount FROM order_lines WHERE order_id = ?", [$orderId]);
+                $files = \Portal\Database::all("SELECT filename FROM order_files WHERE order_id = ?", [$orderId]);
+                $context['order'] = [
+                    'id'              => (int)$order['id'],
+                    'type'            => $order['type'],
+                    'name'            => $order['name'],
+                    'status'          => $order['status'],
+                    'subtotal'        => (float)$order['subtotal'],
+                    'tax'             => (float)$order['tax'],
+                    'total'           => (float)$order['total'],
+                    'project'         => $order['project'],
+                    'monday_item_id'  => $order['monday_item_id'],
+                    'created_at'      => $order['created_at'],
+                    'lines'           => array_map(function ($l) {
+                        return ['description' => $l['description'], 'amount' => (float)$l['amount']];
+                    }, $lines),
+                    'files'           => array_map(function ($f) { return $f['filename']; }, $files),
+                    'notes_raw'       => $order['notes'],
+                ];
+            }
+        }
+
+        $id = \Portal\Database::insert('feedback', [
+            'admin_user_id' => (int)$admin['id'],
+            'customer_id'   => $customer ? (int)$customer['id'] : null,
+            'page_url'      => $pageUrl,
+            'context_json'  => json_encode($context, JSON_UNESCAPED_SLASHES),
+            'message'       => $message,
+            'status'        => 'open',
+        ]);
+        echo json_encode(['ok' => true, 'id' => $id]);
+    }
+
+    public function feedbackIndex(): void
+    {
+        $this->requireAdmin();
+        $rows = \Portal\Database::all("SELECT f.*, u.email AS admin_email, u.first_name, u.last_name, c.name AS customer_name FROM feedback f LEFT JOIN users u ON u.id = f.admin_user_id LEFT JOIN customers c ON c.id = f.customer_id ORDER BY f.created_at DESC LIMIT 200");
+        \Portal\View::render('admin/feedback', [
+            'user' => \Portal\Auth::user(), 'customer' => null,
+            'rows' => $rows, 'csrf' => \Portal\Auth::csrfToken(),
+        ]);
+    }
+
+    public function resolveFeedback(array $args): void
+    {
+        $this->requireAdmin();
+        if (!\Portal\Auth::checkCsrf($_POST['csrf'] ?? null)) { \Portal\View::redirect('/admin/feedback'); return; }
+        $id = (int)($args['id'] ?? 0);
+        $note = trim((string)($_POST['claude_note'] ?? ''));
+        \Portal\Database::exec("UPDATE feedback SET status = 'resolved', claude_note = ?, resolved_at = datetime('now') WHERE id = ?", [$note ?: null, $id]);
+        \Portal\View::redirect('/admin/feedback');
+    }
+
+    public function feedbackJson(): void
+    {
+        header('Content-Type: application/json');
+        $expected = (string) (getenv('PORTAL_FEEDBACK_TOKEN') ?: '');
+        $given    = (string) ($_GET['token'] ?? '');
+        if ($expected === '' || !hash_equals($expected, $given)) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'invalid token']);
+            return;
+        }
+        $statusFilter = ($_GET['status'] ?? 'open') === 'all' ? null : 'open';
+        $sql = "SELECT f.id, f.admin_user_id, f.customer_id, f.page_url, f.context_json, f.message, f.status, f.claude_note, f.created_at, f.resolved_at, u.email AS admin_email, c.name AS customer_name FROM feedback f LEFT JOIN users u ON u.id = f.admin_user_id LEFT JOIN customers c ON c.id = f.customer_id";
+        $params = [];
+        if ($statusFilter) { $sql .= " WHERE f.status = ?"; $params[] = $statusFilter; }
+        $sql .= " ORDER BY f.created_at DESC LIMIT 100";
+        $rows = \Portal\Database::all($sql, $params);
+        foreach ($rows as &$r) {
+            $r['context'] = $r['context_json'] ? json_decode($r['context_json'], true) : null;
+            unset($r['context_json']);
+        }
+        echo json_encode(['ok' => true, 'count' => count($rows), 'feedback' => $rows], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    }
 }

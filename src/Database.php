@@ -27,12 +27,29 @@ class Database
         require PORTAL_SEED_PATH;
     }
 
-    /** Apply incremental column additions to existing databases. Idempotent. */
     private static function migrate(PDO $pdo): void
     {
         $cols = $pdo->query("PRAGMA table_info(orders)")->fetchAll(PDO::FETCH_COLUMN, 1);
         if (!in_array('placed_by_admin_id', $cols, true)) {
             $pdo->exec("ALTER TABLE orders ADD COLUMN placed_by_admin_id INTEGER REFERENCES users(id)");
+        }
+
+        $hasFeedback = (int) $pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='feedback'")->fetchColumn();
+        if (!$hasFeedback) {
+            $pdo->exec(
+                "CREATE TABLE feedback ("
+                . " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                . " admin_user_id INTEGER REFERENCES users(id),"
+                . " customer_id INTEGER REFERENCES customers(id),"
+                . " page_url TEXT,"
+                . " context_json TEXT,"
+                . " message TEXT NOT NULL,"
+                . " status TEXT NOT NULL DEFAULT 'open',"
+                . " claude_note TEXT,"
+                . " created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                . " resolved_at TEXT"
+                . ")"
+            );
         }
     }
 
